@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	f, err := os.Open("/Users/kamilwyszynski/go/src/stuff/AoC2022/day11a/input.txt")
+	f, err := os.Open("input.txt")
 	if err != nil {
 		panic(err)
 	}
@@ -41,7 +41,7 @@ func (m *Monkey) Process() {
 		m.Inspections += 1
 
 		m.Items[0] = m.Operation(m.Items[0])
-		//m.Items[0] /= 3
+		m.Items[0] %= 2 * 7 * 13 * 5 * 3 * 19 * 11 * 17
 		m.Test(m)
 	}
 }
@@ -147,7 +147,6 @@ func parseMonkeys(lines []string) []*Monkey {
 
 			current.Test = func(monkey *Monkey) {
 				value := monkey.Items[0]
-				fmt.Printf("testing %d item\n", value)
 
 				if value%div == 0 {
 					item := monkey.Items[0]

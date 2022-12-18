@@ -5,17 +5,6 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"sync"
-)
-
-type coords struct {
-	x, y int
-}
-
-var (
-	min       = math.MaxInt
-	minCoords = coords{}
-	mtx       = &sync.Mutex{}
 )
 
 func main() {
@@ -29,22 +18,7 @@ func main() {
 	for scanner.Scan() {
 		lines = append(lines, scanner.Text())
 	}
-
-	crds := make([]coords, 0)
-	for i, line := range lines {
-		for j, ch := range line {
-			if ch == 'a' || ch == 'S' {
-				crds = append(crds, coords{i, j})
-			}
-		}
-	}
-	wg := &sync.WaitGroup{}
-	for _, crd := range crds {
-		wg.Add(1)
-		go func() { calculate(lines, crd, wg) }()
-	}
-	wg.Wait()
-	fmt.Println(min, minCoords)
+	calculate(lines)
 }
 
 type Node struct {
@@ -67,17 +41,13 @@ func (n *Node) traverse(fn func(node *Node)) {
 	n.Previous.traverse(fn)
 }
 
-func calculate(lines []string, crd coords, wg *sync.WaitGroup) {
-	defer wg.Done()
-
+func calculate(lines []string) {
 	var nodes [][]*Node
 	for i, line := range lines {
 		n := make([]*Node, 0, len(line))
 		for j, ch := range line {
 			if ch == 'E' {
 				n = append(n, &Node{Val: 'z', Str: string(ch), ID: fmt.Sprintf("%d-%d", i, j)})
-			} else if ch == 'S' {
-				n = append(n, &Node{Val: 'a', Str: string(ch), ID: fmt.Sprintf("%d-%d", i, j)})
 			} else {
 				n = append(n, &Node{Val: ch, Str: string(ch), ID: fmt.Sprintf("%d-%d", i, j)})
 			}
@@ -91,7 +61,7 @@ func calculate(lines []string, crd coords, wg *sync.WaitGroup) {
 			// top
 			if i-1 >= 0 {
 				n := nodes[i-1][j]
-				if n.Val-current.Val < 2 {
+				if n.Val-current.Val < 2 || current.Val == 'S' {
 					nodes[i][j].Children = append(nodes[i][j].Children, nodes[i-1][j])
 				}
 			}
@@ -99,7 +69,7 @@ func calculate(lines []string, crd coords, wg *sync.WaitGroup) {
 			// bottom
 			if i+1 < len(nodes) {
 				n := nodes[i+1][j]
-				if n.Val-current.Val < 2 {
+				if n.Val-current.Val < 2 || current.Val == 'S' {
 					nodes[i][j].Children = append(nodes[i][j].Children, nodes[i+1][j])
 				}
 			}
@@ -107,33 +77,37 @@ func calculate(lines []string, crd coords, wg *sync.WaitGroup) {
 			// left
 			if j-1 >= 0 {
 				n := nodes[i][j-1]
-				if n.Val-current.Val < 2 {
+				if n.Val-current.Val < 2 || current.Val == 'S' {
 					nodes[i][j].Children = append(nodes[i][j].Children, nodes[i][j-1])
 				}
 			}
 			// right
 			if j+1 < len(nodes[i]) {
 				n := nodes[i][j+1]
-				if n.Val-current.Val < 2 {
+				if n.Val-current.Val < 2 || current.Val == 'S' {
 					nodes[i][j].Children = append(nodes[i][j].Children, nodes[i][j+1])
 				}
 			}
+
+			//if nodes[i][j].Val == 'S' {
+			//	root = nodes[i][j]
+			//}
 		}
-	}
-	if len(nodes[crd.x][crd.y].Children) == 0 {
-		return
 	}
 	var Q []*Node
 	var S []*Node
 
 	for i := range nodes {
 		for j := range nodes[i] {
-			if i == crd.x && j == crd.y {
+			if nodes[i][j].Val == 'S' {
 				nodes[i][j].D = 0
 			} else {
 				nodes[i][j].D = math.MaxInt
 			}
 			Q = append(Q, nodes[i][j])
+			if n := nodes[i][j]; len(n.Children) == 0 {
+				fmt.Println("here")
+			}
 		}
 	}
 
@@ -167,15 +141,9 @@ func calculate(lines []string, crd coords, wg *sync.WaitGroup) {
 	last.traverse(func(node *Node) {
 		sum += 1
 		ids[node.ID] = struct{}{}
-	})
 
-	sum -= 1
-	mtx.Lock()
-	if sum < min {
-		min = sum
-		minCoords = crd
-	}
-	mtx.Unlock()
+	})
+	fmt.Println(sum - 1)
 }
 
 func isInQ(n *Node, Q []*Node) bool {
